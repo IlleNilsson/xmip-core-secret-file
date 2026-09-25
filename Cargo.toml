@@ -1,25 +1,30 @@
 # Its own workspace root, so this repository builds on its own.
-#
-# Every module repository carries this and the template did not, which stopped
-# mattering the moment the template stopped sitting beside the estate: nested at
-# template/rust, cargo walked up, found the root workspace and refused to build.
-#
-# It would have bitten a generated repository the same way. A template that does
-# not obey the estate's rules produces repositories that start out breaking
-# them — doc/governance/rust-style.md section 4.
 [workspace]
 
 [package]
-name = "xmip-template-rust"
+name = "xmip-core-secret-file"
 version = "0.1.0"
 edition = "2024"
 license = "AGPL-3.0-or-later"
-repository = "https://github.com/IlleNilsson/xmip-template-rust"
-description = "Starter template for a Rust Xmip module repository."
+repository = "https://github.com/IlleNilsson/xmip-core-secret-file"
+description = "A key-encryption key in a file readable by the Service Identity alone: 0600 in a 0700 directory, refused when either is wider. A xmip-core-secret technology."
 publish = false
 
 [lib]
 path = "src/lib.rs"
+
+[dependencies]
+# A Technology depends on its parent Capability, never the reverse
+# (repository-model.md). KekHolder, the wrapping and the errors live there;
+# this crate only keeps the key.
+secret = { package = "xmip-core-secret", git = "https://github.com/IlleNilsson/xmip-core-secret", branch = "main" }
+# The key's bytes are overwritten when they are dropped.
+zeroize = "1"
+
+[target.'cfg(unix)'.dependencies]
+# The effective user a key file must belong to, asked of the kernel through a
+# safe call: a module crate forbids unsafe, and libc's geteuid is one.
+rustix = { version = "1", features = ["process"] }
 
 [lints.rust]
 # forbid, not deny: a module has no business writing unsafe. The one exception
