@@ -24,11 +24,11 @@
 //! `dpapi` is the store there.
 
 #[cfg(unix)]
-use secret::{KekHolder, KekName, SecretError, Store};
+use secret::{KekHolder, KekName, KeyDirectory, SecretError, Store};
 #[cfg(unix)]
 use std::fs::{self, DirBuilder, Metadata, OpenOptions};
 #[cfg(unix)]
-use std::io::{ErrorKind, Write};
+use std::io::ErrorKind;
 #[cfg(unix)]
 use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt};
 #[cfg(unix)]
@@ -44,7 +44,7 @@ const WIDER: u32 = 0o077;
 /// Key-encryption keys as private files in one private directory.
 #[cfg(unix)]
 pub struct KeyFile {
-    directory: PathBuf,
+    keys: KeyDirectory,
 }
 
 #[cfg(unix)]
@@ -53,12 +53,8 @@ impl KeyFile {
     /// first key is.
     pub fn new(directory: impl Into<PathBuf>) -> Self {
         Self {
-            directory: directory.into(),
+            keys: KeyDirectory::new(directory),
         }
-    }
-
-    fn path(&self, name: &KekName) -> PathBuf {
-        self.directory.join(format!("{name}.kek"))
     }
 }
 
@@ -82,54 +78,42 @@ fn private(path: &Path, metadata: &Metadata) -> Result<(), SecretError> {
 }
 
 #[cfg(unix)]
-fn failed(path: &Path, error: &std::io::Error) -> SecretError {
-    SecretError::store(format!("{}: {error}", path.display()))
-}
-
-#[cfg(unix)]
 impl KekHolder for KeyFile {
     fn store(&self) -> Store {
         Store {
             technology: "file",
-            place: self.directory.display().to_string(),
+            place: self.keys.directory().display().to_string(),
         }
     }
 
     fn read(&self, name: &KekName) -> Result<Option<Zeroizing<Vec<u8>>>, SecretError> {
-        let path = self.path(name);
+        let directory = self.keys.directory();
+        let path = self.keys.path(name);
         let metadata = match fs::metadata(&path) {
             Ok(metadata) => metadata,
             Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
-            Err(error) => return Err(failed(&path, &error)),
+            Err(error) => return Err(KeyDirectory::failed(&path, &error)),
         };
-        let parent = fs::metadata(&self.directory).map_err(|e| failed(&self.directory, &e))?;
-        private(&self.directory, &parent)?;
+        let parent = fs::metadata(directory).map_err(|e| KeyDirectory::failed(directory, &e))?;
+        private(directory, &parent)?;
         private(&path, &metadata)?;
         fs::read(&path)
             .map(|key| Some(Zeroizing::new(key)))
-            .map_err(|error| failed(&path, &error))
+            .map_err(|error| KeyDirectory::failed(&path, &error))
     }
 
     fn create(&self, name: &KekName, material: &[u8]) -> Result<(), SecretError> {
+        let directory = self.keys.directory();
         DirBuilder::new()
             .recursive(true)
             .mode(0o700)
-            .create(&self.directory)
-            .map_err(|error| failed(&self.directory, &error))?;
+            .create(directory)
+            .map_err(|error| KeyDirectory::failed(directory, &error))?;
         // An existing directory keeps its mode: it is checked, not changed.
-        let parent = fs::metadata(&self.directory).map_err(|e| failed(&self.directory, &e))?;
-        private(&self.directory, &parent)?;
-        let path = self.path(name);
-        // create_new: a key already there is never replaced (KekHolder).
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .mode(0o600)
-            .open(&path)
-            .map_err(|error| failed(&path, &error))?;
-        file.write_all(material)
-            .and_then(|()| file.sync_all())
-            .map_err(|error| failed(&path, &error))
+        let parent = fs::metadata(directory).map_err(|e| KeyDirectory::failed(directory, &e))?;
+        private(directory, &parent)?;
+        self.keys
+            .create_new(name, material, OpenOptions::new().mode(0o600))
     }
 }
 
