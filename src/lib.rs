@@ -158,7 +158,7 @@ mod tests {
     fn a_key_wraps_and_unwraps_through_a_private_file() {
         let dir = directory("round");
         let store = Held::new(KeyFile::new(&dir));
-        let key = DataKey::generate().expect("key");
+        let key = DataKey::generate();
         let wrapped = store.wrap(&name("runtime"), &key).expect("wrapped");
         let again = Held::new(KeyFile::new(&dir));
         let back = again.unwrap(&name("runtime"), &wrapped).expect("unwrapped");
