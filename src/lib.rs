@@ -26,11 +26,11 @@
 #[cfg(unix)]
 use secret::{KekHolder, KekName, KeyDirectory, SecretError, Store};
 #[cfg(unix)]
-use std::fs::{self, DirBuilder, Metadata, OpenOptions};
+use std::fs::{self, Metadata};
 #[cfg(unix)]
 use std::io::ErrorKind;
 #[cfg(unix)]
-use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt};
+use std::os::unix::fs::MetadataExt;
 #[cfg(unix)]
 use std::path::{Path, PathBuf};
 #[cfg(unix)]
@@ -104,16 +104,11 @@ impl KekHolder for KeyFile {
 
     fn create(&self, name: &KekName, material: &[u8]) -> Result<(), SecretError> {
         let directory = self.keys.directory();
-        DirBuilder::new()
-            .recursive(true)
-            .mode(0o700)
-            .create(directory)
-            .map_err(|error| KeyDirectory::failed(directory, &error))?;
+        self.keys.create_directory()?;
         // An existing directory keeps its mode: it is checked, not changed.
         let parent = fs::metadata(directory).map_err(|e| KeyDirectory::failed(directory, &e))?;
         private(directory, &parent)?;
-        self.keys
-            .create_new(name, material, OpenOptions::new().mode(0o600))
+        self.keys.create(name, material)
     }
 }
 

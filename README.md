@@ -9,7 +9,9 @@ the file `0600` and the directory `0700`, both owned by the effective user
 the process runs as. A key or directory found wider, or owned by another
 user, is refused as `SecretError::Exposed` and not used: a key others could
 read is a key others could have copied. An existing directory is checked,
-never changed. A key file is created once and never replaced.
+never changed. A key file is created once and never replaced, a private file
+(`secret`'s `private_file`): `0600` as it is created, synced, linked into its
+name and the directory synced after, so a crash leaves no half key.
 
 The bytes are the key as it is; the protection is the operating system's
 ownership and mode, and the disk's encryption where the machine has it. A key
