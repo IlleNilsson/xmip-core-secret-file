@@ -17,7 +17,7 @@
 //!
 //! The Linux kernel keyring is not used for this. It holds a key until the
 //! machine restarts, and a key-encryption key lost at a restart is every
-//! record it sealed, lost (`architecture.toml`, `secret.keyring`).
+//! record it sealed, lost (`architecture.xmip`, `secret.keyring`).
 //!
 //! [`KeyFile`] is a [`secret::KekHolder`]; wrap it in [`secret::Held`] for a
 //! [`secret::KeyStore`]. Unix only: on Windows this crate is empty, and
