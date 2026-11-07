@@ -116,6 +116,7 @@ impl KekHolder for KeyFile {
 mod tests {
     use super::*;
     use secret::{DataKey, Held, KeyStore};
+    use std::assert_matches;
     use std::os::unix::fs::PermissionsExt;
 
     fn directory(test: &str) -> PathBuf {
@@ -168,10 +169,7 @@ mod tests {
         holder.create(&name("k"), &[1u8; 32]).expect("created");
         chmod(&dir.join("k.kek"), 0o644);
         let refused = holder.read(&name("k"));
-        assert!(
-            matches!(refused, Err(SecretError::Exposed { .. })),
-            "{refused:?}"
-        );
+        assert_matches!(refused, Err(SecretError::Exposed { .. }), "{refused:?}");
     }
 
     #[test]
@@ -180,14 +178,11 @@ mod tests {
         let holder = KeyFile::new(&dir);
         holder.create(&name("k"), &[1u8; 32]).expect("created");
         chmod(&dir, 0o755);
-        assert!(matches!(
-            holder.read(&name("k")),
-            Err(SecretError::Exposed { .. })
-        ));
-        assert!(matches!(
+        assert_matches!(holder.read(&name("k")), Err(SecretError::Exposed { .. }));
+        assert_matches!(
             holder.create(&name("other"), &[1u8; 32]),
             Err(SecretError::Exposed { .. })
-        ));
+        );
     }
 
     #[test]
