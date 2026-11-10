@@ -21,7 +21,7 @@ that must never exist as readable bytes belongs in a hardware module (the
 **Why not the kernel keyring.** ADR-0063 names the Linux kernel keyring beside
 this file. A key in the kernel keyring lasts until the machine restarts, and a
 key-encryption key lost at a restart is every record it sealed, lost; so
-`keyring` stays reserved in `architecture.xmip` until the owner decides what
+`keyring` stays reserved in `architecture.toml` until the owner decides what
 it is for.
 
 `KeyFile` is a `secret::KekHolder`; `secret::Held::new(KeyFile::new(dir))` is
