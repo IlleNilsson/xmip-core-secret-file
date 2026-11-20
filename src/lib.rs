@@ -115,15 +115,16 @@ impl KekHolder for KeyFile {
 #[cfg(all(test, unix))]
 mod tests {
     use super::*;
+    use file::temporary::Folder;
     use secret::{DataKey, Held, KeyStore};
     use std::assert_matches;
     use std::os::unix::fs::PermissionsExt;
 
-    fn directory(test: &str) -> PathBuf {
-        let path =
-            std::env::temp_dir().join(format!("xmip-secret-file-{test}-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&path);
-        path.join("key")
+    /// A folder of the test's own, and the key directory in it, not made yet.
+    fn directory(test: &str) -> (Folder, PathBuf) {
+        let folder = Folder::new(&format!("secret-file-{test}"));
+        let directory = folder.join("key");
+        (folder, directory)
     }
 
     fn name(text: &str) -> KekName {
@@ -136,7 +137,7 @@ mod tests {
 
     #[test]
     fn a_key_wraps_and_unwraps_through_a_private_file() {
-        let dir = directory("round");
+        let (_folder, dir) = directory("round");
         let store = Held::new(KeyFile::new(&dir));
         let key = DataKey::generate();
         let wrapped = store.wrap(&name("runtime"), &key).expect("wrapped");
@@ -152,7 +153,7 @@ mod tests {
 
     #[test]
     fn a_missing_key_is_refused_by_name() {
-        let dir = directory("missing");
+        let (_folder, dir) = directory("missing");
         let store = Held::new(KeyFile::new(&dir));
         let refused = store.unwrap(&name("absent"), &[0; 60]);
         let Err(SecretError::MissingKek { name, store: place }) = refused else {
@@ -164,7 +165,7 @@ mod tests {
 
     #[test]
     fn a_key_file_others_can_read_is_refused() {
-        let dir = directory("wide-file");
+        let (_folder, dir) = directory("wide-file");
         let holder = KeyFile::new(&dir);
         holder.create(&name("k"), &[1u8; 32]).expect("created");
         chmod(&dir.join("k.kek"), 0o644);
@@ -174,7 +175,7 @@ mod tests {
 
     #[test]
     fn a_key_directory_others_can_enter_is_refused() {
-        let dir = directory("wide-dir");
+        let (_folder, dir) = directory("wide-dir");
         let holder = KeyFile::new(&dir);
         holder.create(&name("k"), &[1u8; 32]).expect("created");
         chmod(&dir, 0o755);
@@ -187,7 +188,7 @@ mod tests {
 
     #[test]
     fn an_existing_key_is_never_replaced() {
-        let dir = directory("replace");
+        let (_folder, dir) = directory("replace");
         let holder = KeyFile::new(&dir);
         holder.create(&name("k"), &[1u8; 32]).expect("created");
         assert!(holder.create(&name("k"), &[2u8; 32]).is_err());
