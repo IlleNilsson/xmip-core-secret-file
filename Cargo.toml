@@ -16,7 +16,7 @@ path = "src/lib.rs"
 # A Technology depends on its parent Capability, never the reverse
 # (repository-model.md). KekHolder, the wrapping and the errors live there;
 # this crate only keeps the key.
-secret = { package = "xmip-core-secret", git = "https://github.com/IlleNilsson/xmip-core-secret", branch = "main" }
+secret = { workspace = true }
 # The key's bytes are overwritten when they are dropped.
 zeroize = "1"
 # The effective user a key file must belong to, asked of the kernel through a
@@ -25,7 +25,7 @@ rustix = { version = "1", features = ["process"] }
 
 [target.'cfg(unix)'.dev-dependencies]
 # A test's own temporary folder (`file::temporary`); for the tests only.
-file = { package = "xmip-core-library-file", git = "https://github.com/IlleNilsson/xmip-core-library-file", branch = "main", features = ["test-support"] }
+file = { workspace = true, features = ["test-support"] }
 
 [lints]
 workspace = true
